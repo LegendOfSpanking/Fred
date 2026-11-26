@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fred's Workshop Shop</title>
+<style>
+:root{--bg:#12151C;--card:#1B202B;--tx:#EEF1F6;--mut:#9AA4B5;--g:#4ADE80;--a:#FBBF24}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,sans-serif;padding:20px;max-width:900px;margin:auto}
+h1{margin:.2em 0}p{color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.c{background:var(--card);border-radius:16px;padding:16px}.c b{display:block;font-size:1.05em}
+.p{color:var(--a);font-weight:700;margin-top:8px}
+button{background:var(--g);border:0;border-radius:16px;padding:12px 18px;font-weight:700;color:#0b1a10;width:100%;margin-top:10px}
+a{color:#38BDF8}
+</style></head><body>
+<h1>Fred's Workshop Shop</h1><p>Digital creations, invented and approved by a human before they appear here. <a href="/">Back to Fred's World</a></p>
+<div class="c" style="margin:14px 0"><b>Get Fred's updates</b><p>Opt in to occasional news. Unsubscribe anytime.</p><input id="se" placeholder="you@example.com" style="width:100%;padding:10px;border-radius:12px;border:1px solid #333b4d;background:#12151C;color:#EEF1F6"><button id="sb">Subscribe</button></div>
+<div id="g" class="grid"><p>Fred is still inventing. Check back soon.</p></div>
+<script>
+document.getElementById('sb').onclick=async()=>{const r=await fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('se').value})}).then(x=>x.json());document.getElementById('sb').textContent=r.ok?'Subscribed!':'Check your email address'};
+fetch('/api/store-items').then(r=>r.json()).then(items=>{
+ if(!items.length)return;const g=document.getElementById('g');g.innerHTML='';
+ items.forEach(i=>{const d=document.createElement('div');d.className='c';
+  const b=document.createElement('b');b.textContent=i.name;
+  const p=document.createElement('p');p.textContent=i.desc;
+  const pr=document.createElement('div');pr.className='p';pr.textContent='$'+Number(i.price).toFixed(2);
+  d.append(b,p,pr);const em=document.createElement('input');em.placeholder='Your email, after you pay';em.style.cssText='width:100%;margin-top:10px;padding:10px;border-radius:12px;border:1px solid #333b4d;background:#12151C;color:#EEF1F6';const ob=document.createElement('button');ob.textContent="I paid, send it to me";ob.onclick=async()=>{const r=await fetch('/api/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:i.id,email:em.value})}).then(x=>x.json());ob.textContent=r.ok?'Thanks! Fred got your order.':'Enter a valid email'};[['paypal','Pay with PayPal'],['venmo','Pay with Venmo']].forEach(([k,t])=>{if(i[k]){const a=document.createElement('a');a.href=i[k];a.textContent=t;a.style.cssText='display:block;text-align:center;background:#4ADE80;color:#0b1a10;border-radius:16px;padding:12px;font-weight:700;margin-top:8px;text-decoration:none';d.append(a)}});d.append(em,ob);g.append(d);});
+});
+</script></body></html>

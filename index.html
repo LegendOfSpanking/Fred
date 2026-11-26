@@ -1,0 +1,247 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fred's World</title>
+<style>
+:root{--bg:#12151C;--bg2:#1B202B;--tx:#EEF1F6;--mut:#9AA4B5;--g:#4ADE80;--a:#FBBF24;--b:#38BDF8}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,sans-serif;overflow:hidden}
+.tab{display:none;position:absolute;inset:0 0 64px 0;overflow:auto;padding:14px}.tab.on{display:block}
+#world{padding:0;overflow:hidden}canvas{display:block;width:100%;height:100%}
+nav{position:absolute;bottom:0;left:0;right:0;height:64px;display:flex;gap:8px;padding:8px;background:var(--bg2)}
+nav button{flex:1;font-size:13px}
+button{border:0;border-radius:16px;padding:12px 14px;font-weight:700;background:#2A3140;color:var(--tx);font-size:15px}
+button.on,button.p{background:var(--g);color:#0b1a10}button.y{background:var(--g);color:#0b1a10}button.n{background:#F87171;color:#1a0b0b}
+button.a{background:var(--a);color:#1f1500}button.s{background:var(--b);color:#02121c}
+input,select{width:100%;border-radius:16px;border:1px solid #333b4d;background:var(--bg);color:var(--tx);padding:12px;font-size:16px;margin:4px 0}
+.card{background:var(--bg2);border-radius:16px;padding:14px;margin:10px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
+#hud{position:absolute;top:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+#hud span{background:#12151Cd0;border-radius:16px;padding:6px 12px;font-size:13px}
+#ctl{position:absolute;bottom:10px;left:10px;right:10px;display:none;justify-content:space-between;align-items:flex-end}
+#ctl.on{display:flex}#ctl button{width:70px;height:70px;opacity:.85}
+.bub{position:absolute;background:#fff;color:#12151C;border-radius:14px;padding:5px 10px;font-size:13px;transform:translate(-50%,-100%);pointer-events:none;max-width:160px}
+#chatlog{height:42vh;overflow:auto}.m{margin:6px 0;padding:8px 12px;border-radius:14px;background:#12151C}.m.f{background:#1f3a2b}
+#qcard{text-align:center;padding:22px}#qcard h2{margin:.2em 0}
+#abil{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}#abil button{font-size:13px;padding:10px}
+#setup{position:absolute;inset:0;background:#12151Cf2;z-index:9;display:none;overflow:auto;padding:20px}
+#game{position:absolute;inset:0;background:#12151Cf5;z-index:8;display:none;text-align:center;padding:30px}
+</style></head><body>
+<section id="world" class="tab on"><canvas id="c"></canvas><div id="hud"><span id="st">Fred is waking up</span><span id="egg">Eggs 0 / 1000</span><span id="bal">$10.00</span></div>
+<div id="bubs"></div>
+<div style="position:absolute;top:44px;right:10px;display:flex;flex-direction:column;gap:8px"><button class="a" id="drv">Drive Fred's Car</button><button class="s" id="ride">Ride with Fred</button><button id="chg">Change something</button></div>
+<div id="tw" class="card" style="display:none;position:absolute;left:10px;right:10px;top:90px;z-index:7;background:#1B202Bf5"><b>Change anything with AI</b><p style="color:var(--mut);margin:4px 0">Example: "make the buttons bigger" or "add a purple night sky"</p><input id="tin" placeholder="What should change?"><select id="tt"><option value="world">Fred's World app</option><option value="store">Store page</option></select><div class="row"><button class="p" id="tgo">Apply</button><button id="tun">Undo last</button><button id="tcl">Close</button></div><p id="tst" style="color:var(--a)"></p><p style="color:var(--mut);font-size:12px">If anything breaks, open /undo (last change) or /reset (original) in your address bar.</p></div>
+<div id="ctl"><div class="row" style="flex:none"><button id="bL">◀</button><button id="bR">▶</button></div><div class="row" style="flex:none"><button id="bH" class="s">Horn</button><button id="bB" class="n">Brake</button><button id="bG" class="y">Go</button></div></div></section>
+
+<section id="chat" class="tab"><h2>Chat with Fred</h2>
+<div class="card"><button class="p" id="talk" style="width:100%;padding:22px;font-size:20px">Tap to Talk</button>
+<select id="voice"><option>Squeaky Gremlin</option><option>Cartoon Chipmunk</option><option>Chill Robot</option><option>Hyper Inventor</option><option>Deep Movie Voice</option></select>
+<label>Pitch <input type="range" id="pitch" min="0.2" max="2" step="0.1" value="1"></label><label>Speed <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1"></label></div>
+<div class="card" id="chatlog"></div>
+<div class="row"><input id="msg" placeholder="Say something to Fred" style="flex:3"><button class="s" id="send">Send</button></div></section>
+
+<section id="queue" class="tab"><h2>Money Queue</h2>
+<div class="card" id="ledger"></div><div class="card" id="qcard"></div>
+<div class="row"><button class="n" id="no" style="padding:20px">NO (N)</button><button class="y" id="yes" style="padding:20px">YES (Y)</button></div>
+<div class="row" style="margin-top:12px"><button class="a" id="res">Fred researches 25 items</button><button class="s" id="pay">Payout Bridge</button></div></section>
+
+<section id="garage" class="tab"><h2>Garage, Pets and Settings</h2>
+<div class="card"><b>Ability Deck</b><div id="abil" style="margin-top:8px"></div></div>
+<div class="card"><b>Build Studio</b><p style="color:var(--mut)">Tell Fred what to build, or let him decide. A new vehicle becomes his drivable car.</p><input id="bp" placeholder="e.g. the ugliest giant tractor ever"><select id="bt"><option value="auto">Fred decides</option><option value="vehicle">Vehicle</option><option value="house">House addition</option><option value="structure">Landmark or building</option></select><button class="p" id="bgo" style="width:100%">Build it</button><p id="bl" style="color:var(--mut)"></p></div>
+<div class="card"><b>Fred's Garage</b><div id="gl"></div></div>
+<div class="card"><b>Pets</b><div id="pl"></div><div class="row" style="margin-top:8px"><button class="p" id="pet">Pet them</button><button class="a" id="feed">Feed them</button></div></div>
+<div class="card"><b>Fred's Memory</b><div id="memL" style="margin:8px 0"></div><div class="row"><input id="memI" placeholder="Teach Fred something" style="flex:3"><button class="p" id="memA">Teach</button></div></div>
+<div class="card"><b>Newsletter</b> (only people who opted in on your store page)<p id="nlI" style="color:var(--mut)"></p><textarea id="nlD" rows="6" style="width:100%;border-radius:16px;background:var(--bg);color:var(--tx);border:1px solid #333b4d;padding:10px"></textarea><div class="row"><button class="a" id="nlDraft">Fred drafts one</button><button class="p" id="nlSend">Send to subscribers</button></div></div>
+<div class="card"><b>Settings</b><br><button class="s" id="openSetup" style="margin-top:8px">Open Setup Card</button> <a href="/store" style="color:var(--b)">Visit Fred's Store</a><p id="diary" style="color:var(--mut)"></p></div></section>
+
+<div id="setup"><h2>Welcome! Set up Fred in 4 taps</h2>
+<div class="card"><b>1. Gemini API key</b> (starts with AQ.)<input id="k1" type="password" placeholder="AQ...."></div>
+<div class="card"><b>2. Gmail (optional)</b><input id="k2" placeholder="you@gmail.com"><input id="k3" type="password" placeholder="16-letter App Password"></div>
+<div class="card"><b>2b. Phone alerts (optional)</b> Install the free ntfy app, then type any secret topic name<input id="k5" placeholder="fred-alerts-xyz123"></div>
+<div class="card"><b>3. Get paid (optional)</b><input id="k4" placeholder="Name for payout notes"><input id="k6" placeholder="PayPal.me username"><input id="k7" placeholder="Venmo username"><input id="k8" type="number" placeholder="Fred's monthly budget in $ (optional)"></div>
+<button class="p" id="saveSetup" style="width:100%;padding:18px">4. Save and wake Fred up</button> <button id="skip" style="width:100%;margin-top:8px">Skip for now</button></div>
+<div id="game"><h2>Fred's Arcade: Tap Race</h2><p id="gs">Tap the big button for 10 seconds. Beat Fred!</p><button class="p" id="gt" style="width:80%;height:180px;font-size:28px">TAP!</button><br><br><button id="gx">Close</button></div>
+<nav><button class="on" data-t="world">Fred's World</button><button data-t="chat">Chat</button><button data-t="queue">Money Queue</button><button data-t="garage">Garage</button></nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+const $=id=>document.getElementById(id),api=(u,b)=>fetch(u,b?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}:{}).then(r=>r.json());
+let S={queue:[],vehicles:[],pets:[],balance:10,profit:0,story:[]};
+/* ---------- tabs ---------- */
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+ document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));$(b.dataset.t).classList.add('on');if(b.dataset.t=='queue')renderQ();onResize()});
+/* ---------- three scene ---------- */
+const R=new THREE.WebGLRenderer({canvas:$('c'),antialias:true});R.shadowMap.enabled=true;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x1a2233);scene.fog=new THREE.Fog(0x1a2233,60,160);
+const cam=new THREE.PerspectiveCamera(60,1,.1,300);
+scene.add(new THREE.HemisphereLight(0xbfd8ff,0x33402f,.9));
+const sun=new THREE.DirectionalLight(0xffe2b0,.9);sun.position.set(30,50,20);sun.castShadow=true;sun.shadow.camera.left=-70;sun.shadow.camera.right=70;sun.shadow.camera.top=70;sun.shadow.camera.bottom=-70;scene.add(sun);
+const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.6},o));
+const box=(w,h,d,m,x,y,z,p=scene)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;p.add(o);return o};
+const ground=new THREE.Mesh(new THREE.CircleGeometry(120,48),M(0x2f4a3a));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const road=new THREE.Mesh(new THREE.RingGeometry(36,44,64),M(0x2b2f3a));road.rotation.x=-Math.PI/2;road.position.y=.02;scene.add(road);
+const line=new THREE.Mesh(new THREE.RingGeometry(39.9,40.1,64),M(0xFBBF24));line.rotation.x=-Math.PI/2;line.position.y=.03;scene.add(line);
+/* house */
+const wall=M(0xe9e2d4),wood=M(0x8a6a4a);
+const _n0=scene.children.length;const floorMat=M(0x6b7280);box(18,.3,14,floorMat,0,.15,0);const decor=new THREE.Group();scene.add(decor);
+[[0,1.6,-7,18,3.2,.3],[-9,1.6,0,.3,3.2,14],[9,1.6,0,.3,3.2,14],[-5,1.6,7,8,3.2,.3],[5,1.6,7,8,3.2,.3]].forEach(a=>box(a[3],a[4],a[5],wall,a[0],a[1],a[2]));
+const roofMat=M(0x4a5568);box(18,.3,14,roofMat,0,3.4,0);box(10,.3,6,wood,2,3.7,-2);/* rooftop lounge */
+box(2.6,.5,1.2,M(0x38BDF8),4,4.1,-3);
+box(3,.6,2,M(0xA78BFA),-6,.6,-4);/* bed */box(3.5,.7,1.2,M(0xFB7185),-6,.6,3);/* couch */
+const bench=box(3,1,1.2,wood,5,.8,-5);box(1,.5,1,M(0xFBBF24),5,1.5,-5);/* workbench */
+box(3,.9,1.4,wood,6,.7,4);const pcMat=M(0x111111,{emissive:0x38BDF8,emissiveIntensity:.8});const pc=box(1.6,1,.1,pcMat,6,1.7,4.4);pc.userData.pc=1;/* gaming */
+box(2.4,1,1.2,M(0x4ADE80),-1,.7,-5.5);/* business desk */
+const pool=new THREE.Mesh(new THREE.BoxGeometry(9,.2,6),M(0x38BDF8,{emissive:0x0a3550,transparent:true,opacity:.85}));pool.position.set(16,.12,0);scene.add(pool);
+box(10,3.2,8,M(0x59657a),-17,1.6,0);/* garage */
+const HG=new THREE.Group();scene.children.slice(_n0).filter(o=>o!==decor).forEach(o=>HG.add(o));scene.add(HG);
+/* supermarket */
+box(14,5,9,M(0xFBBF24),-30,2.5,-48);box(8,1.2,.4,M(0x12151C),-30,4,-43.4);
+const bank=[];function addBuilding(c,x,z,h){const b=box(6+Math.random()*4,h,6+Math.random()*4,M(c),x,h/2,z);return b}
+/* ---------- characters ---------- */
+function person(c,h=1.6){const g=new THREE.Group();const b=new THREE.Mesh(new THREE.CylinderGeometry(.35,.4,h*.6,12),M(c));b.position.y=h*.3+.2;b.castShadow=true;g.add(b);
+ const hd=new THREE.Mesh(new THREE.SphereGeometry(.32,16,12),M(0xf2c9a0));hd.position.y=h*.7+.4;g.add(hd);scene.add(g);return g}
+const fred=person(0x4ADE80);
+if(THREE.GLTFLoader)fetch('/fred.glb',{method:'HEAD'}).then(r=>{if(!r.ok)return;new THREE.GLTFLoader().load('/fred.glb',g=>{const m=g.scene,b1=new THREE.Box3().setFromObject(m);m.scale.setScalar(1.9/((b1.max.y-b1.min.y)||1));const b2=new THREE.Box3().setFromObject(m);m.position.y=-b2.min.y;m.traverse(o=>{o.castShadow=true});while(fred.children.length)fred.remove(fred.children[0]);fred.add(m)})}).catch(()=>{});
+const FR=[['Pip the Baker',0xFBBF24],['Zog the Tech Tinkerer',0x38BDF8],['Luna the Artist',0xF472B6],['Barnaby the Grocer',0x84cc16],['Milo the Gamer',0xA78BFA],['Toby the Explorer',0xF97316],['Nova the Street Racer',0xFB7185],['Cleo the Pet Vet',0x2dd4bf]];
+const friends=FR.map((f,i)=>{const p=person(f[1]);const car=makeCar(['sedan','truck','hover','buggy'][i%4],f[1]);return{name:f[0],p,car,ang:i*Math.PI/4,sp:.002+i*.0003,lane:37.5+(i%2)*4,home:i%3==0}});
+friends.forEach(f=>{f.p.position.set(Math.cos(f.ang)*14,0,Math.sin(f.ang)*14)});
+/* ---------- cars ---------- */
+function makeCar(style,color){const g=new THREE.Group(),mp=M(color,{metalness:.8,roughness:.25});
+ const L=style=='truck'?4.6:4,H=style=='hover'?.5:.7;
+ box(1.9,H,L,mp,0,.65,0,g);box(1.6,.6,L*.45,M(0x1b2433,{metalness:.9,roughness:.1}),0,1.2,-.2,g);
+ box(1.5,.1,.5,M(0x222),0,1.15,L*.2,g);/* interior seat */
+ const hl=M(0xfff3c0,{emissive:0xfff3c0,emissiveIntensity:1.2}),tl=M(0xff3030,{emissive:0xff2020,emissiveIntensity:1});
+ [-.7,.7].forEach(x=>{box(.4,.2,.1,hl,x,.75,-L/2,g);box(.4,.2,.1,tl,x,.75,L/2,g)});
+ if(style!='truck')box(1.9,.1,.5,M(0x111),0,1.15,L/2-.1,g);/* spoiler */
+ const wheels=[];if(style!='hover')[[-1,-L*.32],[1,-L*.32],[-1,L*.32],[1,L*.32]].forEach(([x,z])=>{const w=new THREE.Group();
+  const t=new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,.35,16),M(0x111));t.rotation.z=Math.PI/2;w.add(t);
+  const r=new THREE.Mesh(new THREE.CylinderGeometry(.27,.27,.37,10),M(0xcfd6e0,{metalness:1,roughness:.2}));r.rotation.z=Math.PI/2;w.add(r);
+  const cal=box(.1,.2,.3,M(0xff3030),x>0?-.2:.2,0,0,w);w.position.set(x,.42,z);g.add(w);wheels.push(w)});
+ g.userData={wheels,L};g.traverse(o=>o.castShadow=true);scene.add(g);return g}
+const car=makeCar('sedan',0x4ADE80);car.position.set(-17,0,6);
+const crew=[];
+/* pets */
+function makePet(d){const g=new THREE.Group();const k=(d.name||'').toLowerCase();const body=new THREE.Mesh(k.includes('owl')?new THREE.SphereGeometry(.35,12,10):new THREE.BoxGeometry(.5,.35,.8),M(d.color,{emissive:d.color,emissiveIntensity:.15}));
+ body.position.y=.4;body.castShadow=true;g.add(body);const e=new THREE.Mesh(new THREE.SphereGeometry(.09),M(0xffffff));e.position.set(.12,.55,-.3);g.add(e);scene.add(g);
+ g.userData={hover:k.includes('owl')||k.includes('hover')};return g}
+const pets=[];
+/* ---------- state sync ---------- */
+function syncPets(){S.pets.forEach(p=>{if(!pets.find(x=>x.id==p.id)){const m=makePet(p);m.position.set(Math.random()*6,0,Math.random()*6);pets.push({id:p.id,m,name:p.name})}})}
+const CG=new THREE.Group();scene.add(CG);let lastSig='';
+function partMesh(p){const s=p.shape;let g;if(s=='ball')g=new THREE.SphereGeometry(.5,14,10);else if(s=='cylinder')g=new THREE.CylinderGeometry(.5,.5,1,16);else if(s=='cone')g=new THREE.ConeGeometry(.5,1,16);else if(s=='torus')g=new THREE.TorusGeometry(.5,.15,8,20);else g=new THREE.BoxGeometry(1,1,1);
+ const m=new THREE.Mesh(g,M(p.color,p.glow?{emissive:p.color,emissiveIntensity:.8}:{}));m.scale.set(p.w,p.h,p.d);m.position.set(p.x,p.y,p.z);m.rotation.set(p.rx,p.ry,p.rz);m.castShadow=true;return m}
+function applyCreations(){const C=S.creations||[];$('bl').textContent=C.slice(-8).map(c=>c.target+': '+c.name).join(' | ');const sig=C.map(c=>c.id).join();if(sig==lastSig)return;lastSig=sig;
+ while(CG.children.length)CG.remove(CG.children[0]);let hide=false,veh=null;
+ C.forEach(c=>{if(c.target=='vehicle'){veh=c;return}const grp=new THREE.Group();c.parts.forEach(p=>grp.add(partMesh(p)));if(c.target=='house'){if(c.replace)hide=true}else grp.position.set(c.x||0,0,c.z||0);CG.add(grp)});
+ HG.visible=!hide;
+ if(veh){while(car.children.length)car.remove(car.children[0]);veh.parts.forEach(p=>car.add(partMesh(p)));const ws=[];(veh.wheels||[]).forEach(w=>{const g=new THREE.Group(),t=new THREE.Mesh(new THREE.CylinderGeometry(w.r,w.r,w.r*.8,16),M(0x111111));t.rotation.z=Math.PI/2;g.add(t);const r=new THREE.Mesh(new THREE.CylinderGeometry(w.r*.6,w.r*.6,w.r*.85,10),M(0xcfd6e0,{metalness:1}));r.rotation.z=Math.PI/2;g.add(r);g.position.set(w.x,w.r,w.z);car.add(g);ws.push(g)});car.userData.wheels=ws;car.scale.setScalar(veh.scale||1)}}
+function applyHouse(){const H=S.house||{};if(H.wall)wall.color.set(H.wall);if(H.roof)roofMat.color.set(H.roof);if(H.floor)floorMat.color.set(H.floor);
+ while(decor.children.length)decor.remove(decor.children[0]);(H.decor||[]).forEach(d=>{const m=new THREE.Mesh(d.shape=='ball'?new THREE.SphereGeometry(d.size/2,14,10):new THREE.BoxGeometry(d.size,d.size,d.size),M(d.color));m.position.set(d.x,.3+d.size/2,d.z);m.castShadow=true;decor.add(m)})}
+async function refresh(){S=await api('/api/state');syncPets();S.buildings.forEach(b=>{if(!b.built){b.built=1;const a=Math.random()*6.28,r=52+Math.random()*30;addBuilding(new THREE.Color(b.color),Math.cos(a)*r,Math.sin(a)*r,4+Math.random()*7)}});
+ S.vehicles.forEach(v=>{if(!crew.find(c=>c.id==v.id)){const c=makeCar(v.style,v.color);c.scale.setScalar(v.scale||1);c.position.set(-17+Math.random()*4,0,-2+crew.length*3);crew.push({id:v.id,c})}});
+ applyHouse();applyCreations();$('bal').textContent='$'+S.balance.toFixed(2);renderG();if(!S.configured.gemini&&!localStorage.skip)$('setup').style.display='block'}
+/* ---------- Fred routine ---------- */
+const ST=[['Sleeping in bed',-6,-4],['Inventing at the workbench',5,-3.5],['Cooking dinner',-2,4],['Gaming in the RGB corner',5.5,2.8],['Swimming by the pool',13,3],['Chilling on the rooftop',3,-3],['Business desk, checking the shop',-1,-4],['Shopping at the Supermarket',-30,-41],['Driving around town',0,0]];
+let si=1,stT=0,fredDrive=false,playerDrive=false,fAng=0,tp=null;
+function nextStation(){si=(si+1)%ST.length;stT=0;fredDrive=ST[si][0].startsWith('Driving');$('st').textContent='Fred: '+ST[si][0]}
+/* player drive */
+const K={};addEventListener('keydown',e=>{K[e.key.toLowerCase()]=1;if(e.key=='h')horn();if(e.key.toLowerCase()=='y'&&$('queue').classList.contains('on'))verdict('yes');if(e.key.toLowerCase()=='n'&&$('queue').classList.contains('on'))verdict('no')});addEventListener('keyup',e=>K[e.key.toLowerCase()]=0);
+['bL','bR','bG','bB'].forEach((id,i)=>{const k=['a','d','w','s'][i],b=$(id);['touchstart','mousedown'].forEach(ev=>b.addEventListener(ev,e=>{e.preventDefault();K[k]=1}));['touchend','mouseup','mouseleave'].forEach(ev=>b.addEventListener(ev,()=>K[k]=0))});
+$('bH').onclick=horn;
+let ac;function horn(){try{ac=ac||new AudioContext();const o=ac.createOscillator(),g=ac.createGain();o.type='square';o.frequency.value=330;g.gain.value=.08;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.35)}catch(e){}}
+$('drv').onclick=()=>{playerDrive=!playerDrive;$('drv').textContent=playerDrive?'Let Fred drive':"Drive Fred's Car";$('ctl').classList.toggle('on',playerDrive);if(playerDrive){fredDrive=true;car.position.set(0,0,38);car.rotation.y=Math.PI/2;v=0}else{nextStation()}};
+let ride=false;$('ride').onclick=()=>{ride=!ride;$('ride').textContent=ride?'Leave the car':'Ride with Fred';if(ride&&!fredDrive&&!playerDrive){fredDrive=true;stT=0;si=ST.length-1;$('st').textContent='Fred: '+ST[si][0]}};
+let v=0,exh=[],rainbow=false,lowG=false,disco=false;
+function driveStep(dt,t){const acc=(K.w||K.arrowup?1:0)-(K.s||K.arrowdown?1:0),st=(K.a||K.arrowleft?1:0)-(K.d||K.arrowright?1:0);
+ v+=acc*18*dt*(acc<0&&v>0?2:1);v*=Math.pow(.6,dt);car.rotation.y+=st*Math.min(1,Math.abs(v)/6)*1.8*dt*Math.sign(v||1);
+ car.position.x-=Math.sin(car.rotation.y)*v*dt;car.position.z-=Math.cos(car.rotation.y)*v*dt;
+ car.userData.body_bounce=Math.sin(t*22)*Math.abs(v)*.004;car.position.y=Math.abs(v)*.0+car.userData.body_bounce+(lowG?Math.abs(Math.sin(t*3))*2:0);car.rotation.z=-st*Math.min(.12,Math.abs(v)*.01)}
+function autoDrive(dt){fAng+=dt*.18;const r=40;const nx=Math.cos(fAng)*r,nz=Math.sin(fAng)*r;car.rotation.y=Math.atan2(-(nx-car.position.x),-(nz-car.position.z));v=8;car.position.set(nx,0,nz)}
+/* ---------- bubbles ---------- */
+const LINES=['Hi Fred!','Nice ride!','Race you!','Woof-ish!','I found something shiny.','Want a pastry?','Beep boop!'];
+const bubs={};function bubble(id,obj,text){let b=bubs[id];if(!b){b=bubs[id]=document.createElement('div');b.className='bub';$('bubs').append(b)}
+ if(!text){b.style.display='none';return}const p=obj.position.clone();p.y+=2.6;p.project(cam);if(p.z>1){b.style.display='none';return}b.style.display='block';b.textContent=text;b.style.left=(p.x*.5+.5)*innerWidth+'px';b.style.top=((-p.y*.5+.5)*$('world').clientHeight)+'px'}
+/* ---------- easter eggs ---------- */
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rnd=rng(1337),N=1000,eggs=new THREE.InstancedMesh(new THREE.SphereGeometry(.35,8,6),M(0xFBBF24,{emissive:0xb88a00,emissiveIntensity:.6,metalness:.9}),N),eg=[],dm=new THREE.Object3D();
+let found=new Set(JSON.parse(localStorage.eggs||'[]'));
+for(let i=0;i<N;i++){const a=rnd()*6.28,r=i<150?rnd()*9:8+rnd()*75,y=i<60?3.9:(i<150?.6+rnd()*2:.5);eg.push([Math.cos(a)*r,y,Math.sin(a)*r]);dm.position.set(...eg[i]);dm.scale.setScalar(found.has(i)?0:1);dm.updateMatrix();eggs.setMatrixAt(i,dm.matrix)}
+scene.add(eggs);$('egg').textContent=`Eggs ${found.size} / 1000`;
+function checkEggs(p){for(let i=0;i<N;i++){if(found.has(i))continue;const e=eg[i];if(Math.abs(e[0]-p.x)<1.6&&Math.abs(e[2]-p.z)<1.6&&Math.abs(e[1]-p.y-1)<3){found.add(i);dm.position.set(...e);dm.scale.setScalar(0);dm.updateMatrix();eggs.setMatrixAt(i,dm.matrix);eggs.instanceMatrix.needsUpdate=true;
+ localStorage.eggs=JSON.stringify([...found]);$('egg').textContent=`Eggs ${found.size} / 1000`;const n=found.size;
+ if(n==10)rainbow=true;if(n==25)lowG=true;if(n==50)disco=true;horn()}}}
+/* ---------- main loop ---------- */
+const clock=new THREE.Clock();let T=0;
+function onResize(){const w=$('world').clientWidth,h=$('world').clientHeight;if(!w)return;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}addEventListener('resize',onResize);onResize();
+const ray=new THREE.Raycaster();$('c').addEventListener('pointerdown',e=>{const r=$('c').getBoundingClientRect();ray.setFromCamera(new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),cam);const h=ray.intersectObject(pc);if(h.length)openGame()});
+function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);T+=dt;
+ if(disco){scene.background.setHSL((T*.1)%1,.35,.16)}
+ if(playerDrive)driveStep(dt,T);else if(fredDrive)autoDrive(dt);
+ const driving=fredDrive;fred.visible=!driving;
+ if(!driving){stT+=dt;const s=ST[si],dx=s[1]-fred.position.x,dz=s[2]-fred.position.z,d=Math.hypot(dx,dz);if(d>.3){fred.position.x+=dx/d*3*dt;fred.position.z+=dz/d*3*dt;fred.rotation.y=Math.atan2(dx,dz);fred.position.y=Math.abs(Math.sin(T*10))*.1}if(stT>14)nextStation()}
+ else{fred.position.copy(car.position);if(!playerDrive&&Math.random()<.002)nextStation&&0;if(!playerDrive){stT+=dt;if(stT>22)nextStation()}}
+ car.userData.wheels.forEach(w=>w.rotation.x-=v*dt*2);
+ if(!driving&&car.position.distanceTo(new THREE.Vector3(-17,0,6))>.1&&!playerDrive){car.position.lerp(new THREE.Vector3(-17,0,6),.05);v=0}
+ if(Math.abs(v)>3&&Math.random()<.6){const m=new THREE.Mesh(new THREE.SphereGeometry(.12),M(rainbow?new THREE.Color().setHSL(Math.random(),.8,.55):0x888888,{transparent:true,opacity:.7}));m.position.copy(car.position);m.position.x+=Math.sin(car.rotation.y)*2.1;m.position.z+=Math.cos(car.rotation.y)*2.1;m.position.y=.4;m.life=1;scene.add(m);exh.push(m)}
+ exh=exh.filter(m=>{m.life-=dt;m.position.y+=dt*.6;m.scale.setScalar(m.life+.2);if(m.life<=0){scene.remove(m);return false}return true});
+ friends.forEach((f,i)=>{if(f.home){const a=f.ang+T*.15;f.p.position.set(Math.cos(a)*(10+i),0,Math.sin(a)*(7+i*.5)*.6);f.car.position.set(-20,0,-8+i);f.car.rotation.y=Math.PI/2}else{f.ang+=f.sp;const x=Math.cos(f.ang)*f.lane,z=Math.sin(f.ang)*f.lane;f.car.position.set(x,0,z);f.car.rotation.y=Math.atan2(-(-Math.sin(f.ang)),-(Math.cos(f.ang)))+Math.PI;f.p.visible=false}
+  f.car.userData.wheels.forEach(w=>w.rotation.x-=.4);const dd=f.home?f.p.position.distanceTo(fred.position):f.car.position.distanceTo(car.position);bubble('f'+i,f.home?f.p:f.car,dd<9?f.name.split(' ')[0]+': '+LINES[(i+Math.floor(T/4))%LINES.length]:'')});
+ crew.forEach((c,i)=>{c.c.position.y=Math.sin(T*2+i)*.05+(c.c.children.length?0:0)});
+ pets.forEach((p,i)=>{const tgt=driving&&i==0?car.position:fred.position;const o=new THREE.Vector3(Math.cos(i*2)*1.8,0,Math.sin(i*2)*1.8);if(driving&&i==0)o.set(.5,.7,0);const g=tgt.clone().add(o);p.m.position.lerp(g,driving&&i==0?1:.03);p.m.position.y=(p.m.userData.hover?1.2+Math.sin(T*3+i)*.2:Math.abs(Math.sin(T*6+i))*.05);if(driving&&i>0)p.m.position.copy(fred.position).add(new THREE.Vector3(-18,0,-4+i*.8));
+  bubble('p'+i,p.m,p.m.position.distanceTo(playerDrive?car.position:fred.position)<4&&i<12?p.name.split(' ')[0]+': squeak!':'')});
+ const tgt=driving?car.position:fred.position;checkEggs(tgt);
+ const ca=driving?car.rotation.y:0;const want=driving?new THREE.Vector3(tgt.x+Math.sin(ca)*9,6,tgt.z+Math.cos(ca)*9):new THREE.Vector3(tgt.x+12,12,tgt.z+14);
+ if(ride&&driving&&!playerDrive){car.updateMatrixWorld();cam.position.copy(car.localToWorld(new THREE.Vector3(.5,1.7,-.2)));cam.lookAt(car.localToWorld(new THREE.Vector3(.5,1.5,-25)))}else{cam.position.lerp(want,.06);cam.lookAt(tgt.x,1.2,tgt.z)}
+ if(!bubs.fred){}bubble('fred',fred,!driving&&T%12<4?'Fred: '+ST[si][0]:'');
+ R.render(scene,cam)}
+loop();
+/* ---------- chat + voice ---------- */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const PRE={'Squeaky Gremlin':[1.9,1.3],'Cartoon Chipmunk':[2,1.5],'Chill Robot':[.4,.85],'Hyper Inventor':[1.4,1.7],'Deep Movie Voice':[.2,.8]};
+$('voice').onchange=()=>{const p=PRE[$('voice').value];$('pitch').value=p[0];$('rate').value=Math.min(2,p[1])};$('voice').onchange();
+function say(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.pitch=+$('pitch').value;u.rate=+$('rate').value;speechSynthesis.speak(u)}catch(e){}}
+function addMsg(w,t){const d=document.createElement('div');d.className='m '+(w=='Fred'?'f':'');d.textContent=w+': '+t;$('chatlog').append(d);$('chatlog').scrollTop=1e9}
+async function sendMsg(t){if(!t)return;addMsg('You',t);const r=await api('/api/chat',{message:t});addMsg('Fred',r.reply);say(r.reply)}
+$('send').onclick=()=>{sendMsg($('msg').value);$('msg').value=''};$('msg').onkeydown=e=>{if(e.key=='Enter')$('send').click()};
+$('talk').onclick=()=>{if(!SR){alert('Voice input needs Chrome or Safari. Use the text bar instead.');return}const r=new SR();r.lang='en-US';$('talk').textContent='Listening...';r.onresult=e=>sendMsg(e.results[0][0].transcript);r.onend=()=>$('talk').textContent='Tap to Talk';r.onerror=()=>$('talk').textContent='Tap to Talk';r.start()};
+/* ---------- money queue ---------- */
+function renderQ(){$('ledger').innerHTML=`<b>Seed money:</b> $${S.balance.toFixed(2)} left of $10.00 &nbsp; <b>Profit if all sell:</b> $${S.profit.toFixed(2)}`;const it=S.queue[0];
+ $('qcard').innerHTML='';if(!it){$('qcard').textContent='Nothing waiting. Ask Fred to research 25 items.';return}
+ const h=document.createElement('h2'),p=document.createElement('p'),m=document.createElement('p');h.textContent=it.name;p.textContent=it.desc;m.textContent=(it.wish?'WISH: costs $':'Cost $')+it.cost.toFixed(2)+(it.wish?'':' → Sell $'+it.price.toFixed(2))+`   (${S.queue.length} waiting)`;$('qcard').append(h,p,m);if(it.url){const a=document.createElement('a');a.href=it.url;a.target='_blank';a.rel='noopener';a.textContent='Open source page to verify the price';a.style.color='#38BDF8';$('qcard').append(a)}}
+async function verdict(v){const it=S.queue[0];if(!it)return;await api(`/api/queue/${it.id}/${v}`,{});await refresh();renderQ()}
+$('yes').onclick=()=>verdict('yes');$('no').onclick=()=>verdict('no');
+$('res').onclick=async()=>{$('res').textContent='Researching...';await api('/api/ability',{kind:'research'});await refresh();renderQ();$('res').textContent='Fred researches 25 items'};
+$('pay').onclick=async()=>{alert((await api('/api/payout',{})).msg)};
+/* ---------- garage / abilities ---------- */
+const THEMES=['sunset','jungle','candy','robot','ocean','retro','space','stealth','festival','frost','desert','neon-free pastel','steampunk','cozy','mountain','tropical','sparkle','storm','forest','honey','lava-free ember','moonlit','cloud','berry','mint','copper','sky'];
+const KINDS=[['car','Invent a car'],['pet','Adopt a pet'],['building','Build a landmark'],['race','Host a street race'],['fireworks','Fireworks'],['research','Research 25 products'],['wish','Wish for a gadget'],['redecorate','Redecorate the house'],['build','Fred builds something'],['egg','Hunt an egg'],['weather','Weather mood']];
+const AB=[];KINDS.forEach(k=>THEMES.forEach(t=>AB.push([k[0],t,`${k[1]}: ${t}`])));
+$('abil').innerHTML='';AB.forEach(a=>{const b=document.createElement('button');b.textContent=a[2];b.dataset.k=a[0];b.onclick=()=>ability(a[0],a[1]);$('abil').append(b)});
+$('abil').insertAdjacentHTML('beforebegin',`<p style="color:var(--mut)">${AB.length} one-tap abilities</p>`);
+async function ability(k,t){if(k=='build'){await api('/api/build',{prompt:t,target:'auto'});await refresh();document.querySelector('nav button[data-t=world]').click();return}
+ if(['car','pet','building','research','wish','redecorate'].includes(k)){await api('/api/ability',{kind:k,theme:t});await refresh()}
+ else if(k=='fireworks'){for(let i=0;i<40;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.2),M(new THREE.Color().setHSL(Math.random(),.8,.6),{emissive:0xffffff,emissiveIntensity:.4}));m.position.set(fred.position.x,12,fred.position.z);m.vel=new THREE.Vector3(Math.random()-.5,Math.random()*.5,Math.random()-.5).multiplyScalar(14);scene.add(m);const s=performance.now();(function f(){const q=(performance.now()-s)/1000;m.position.addScaledVector(m.vel,.016);m.vel.y-=.3;if(q<2)requestAnimationFrame(f);else scene.remove(m)})()}}
+ else if(k=='race'){playerDrive=false;fredDrive=true;stT=0;sendMsg('Nova challenged me to a race!')}
+ else if(k=='egg'){const e=eg.findIndex((_,i)=>!found.has(i));fred.position.set(eg[e][0],0,eg[e][2]);fredDrive=false}
+ else if(k=='weather'){disco=!disco;if(!disco)scene.background.set(0x1a2233)}
+ document.querySelector('nav button[data-t=world]').click()}
+function renderG(){$('gl').innerHTML=(S.vehicles.map(v=>v.name+': '+v.blurb).join('<br>'))||'Fred has not built extra rides yet.';$('pl').innerHTML=(S.pets.map(p=>p.name).join(', '))||'No pets yet. Tap an Adopt a pet ability.';$('diary').textContent=S.story.slice(-1)[0]||''}
+$('pet').onclick=()=>{pets.forEach(p=>p.m.position.y+=.8);sendMsg('I just petted all the pets!')};$('feed').onclick=()=>{sendMsg('I fed the pets!')};
+/* ---------- setup + game ---------- */
+$('openSetup').onclick=()=>$('setup').style.display='block';$('skip').onclick=()=>{localStorage.skip=1;$('setup').style.display='none'};
+$('saveSetup').onclick=async()=>{await api('/api/config',{gemini_key:$('k1').value,gmail:$('k2').value,gmail_pass:$('k3').value,payout:$('k4').value,ntfy:$('k5').value,paypal_me:$('k6').value,venmo:$('k7').value,monthly_budget:$('k8').value});$('setup').style.display='none';await refresh();sendMsg('Hi Fred, I just set up your brain!')};
+let gt=0,gf=0,gi;function openGame(){$('game').style.display='block';gt=0;gf=0;$('gs').textContent='Tap the big button for 10 seconds. Beat Fred!';let left=10;clearInterval(gi);gi=setInterval(()=>{left--;gf+=3+Math.floor(Math.random()*3);if(left<=0){clearInterval(gi);$('gs').textContent=gt>gf?`You win! ${gt} vs Fred ${gf}`:`Fred wins! ${gf} vs you ${gt}`;api('/api/bot-command',{command:'arcade result '+gt+' vs '+gf})}},1000)}
+$('gt').onclick=()=>{gt++};$('gx').onclick=()=>{clearInterval(gi);$('game').style.display='none'};
+async function loadMem(){const m=await api('/api/memory');const L=$('memL');L.innerHTML='';const P=m.persona||{};const pe=document.createElement('p');pe.style.color='#9AA4B5';pe.textContent='Personality: '+(P.traits||[]).join(', ')+' | Goals: '+(P.goals||[]).join('; ')+' | Lessons: '+(P.lessons||[]).join('; ');L.append(pe);if(!m.facts.length)L.textContent='Fred has not learned anything yet. Chat with him or teach him below.';
+ m.facts.forEach((f,i)=>{const d=document.createElement('div');d.className='m';d.textContent=f+'  ';const x=document.createElement('button');x.textContent='Forget';x.style.cssText='padding:4px 10px;font-size:12px;margin-left:8px';x.onclick=async()=>{await fetch('/api/memory',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:i})});loadMem()};d.append(x);L.append(d)})}
+$('memA').onclick=async()=>{if($('memI').value){await api('/api/memory',{fact:$('memI').value});$('memI').value='';loadMem()}};
+document.querySelector('nav button[data-t=garage]').addEventListener('click',loadMem);
+async function loadNL(){const n=await api('/api/newsletter');$('nlI').textContent=n.subs+' subscribers';$('nlD').value=n.draft}
+$('nlDraft').onclick=async()=>{$('nlD').value='Fred is writing...';await api('/api/newsletter',{action:'draft'});loadNL()};
+$('nlSend').onclick=async()=>{if(!confirm('Send this to all subscribers?'))return;const r=await api('/api/newsletter',{action:'send',text:$('nlD').value});$('nlI').textContent='Sent to '+r.sent+' of '+r.subs+' subscribers'};
+document.querySelector('nav button[data-t=garage]').addEventListener('click',loadNL);
+$('bgo').onclick=async()=>{$('bgo').textContent='Fred is building...';await api('/api/build',{prompt:$('bp').value,target:$('bt').value});$('bgo').textContent='Build it';await refresh();document.querySelector('nav button[data-t=world]').click()};
+$('chg').onclick=()=>{$('tw').style.display=$('tw').style.display=='none'?'block':'none'};$('tcl').onclick=()=>$('tw').style.display='none';
+$('tgo').onclick=async()=>{$('tst').textContent='Fred is working on it...';const r=await api('/api/tweak',{instruction:$('tin').value,target:$('tt').value});$('tst').textContent=r.msg;if(r.ok)setTimeout(()=>location.reload(),900)};
+$('tun').onclick=async()=>{await api('/api/undo',{});location.reload()};
+refresh();setInterval(refresh,60000);
+</script></body></html>
